@@ -2,14 +2,15 @@ const router = require("express").Router();
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
 const User = require('../models/User.model');
+const { isLoggedIn, isLoggedOut } = require('../middleware/route-guard.js');
 
 
 //Get the Sign Up Page
-router.get("/signup", (req, res) => {
+router.get("/signup", isLoggedOut, (req, res) => {
     res.render("auth/signup");
   });
 
-  router.post("/signup", (req, res) => {
+  router.post("/signup",isLoggedOut, (req, res) => {
     const { username, password } = req.body;
    
     bcrypt
@@ -23,25 +24,25 @@ router.get("/signup", (req, res) => {
       })
       .then(userFromDB => {
          console.log('Newly created user is: ', userFromDB);
-        req.session.currentUser = userFromDB;
-        res.redirect('/auth/profile');
+        req.session.currentUser = userFromDB; //Here we create .currentUser
+        res.redirect('/private/auth/profile');
       })
       .catch(error => console.log(error)); 
   })
 
 //Get Profile Page
-router.get("/profile", (req, res) => {
+router.get("/profile",isLoggedIn, (req, res) => {
     console.log('profile page', req.session);
     const { username } = req.session.currentUser;
       res.render("auth/profile");
   });
   
-  router.get("/login", (req, res) => {
+  router.get("/login",isLoggedOut, (req, res) => {
      console.log('req session', req.session);
      res.render("auth/login");
   });
   
-  router.post("/login", (req, res) => {
+  router.post("/login",isLoggedOut, (req, res) => {
     const { username, password } = req.body;
     console.log("req sessiooon", req.session)
 
@@ -70,6 +71,13 @@ router.get("/profile", (req, res) => {
       }
     })
     .catch(err => console.log(err))
+});
+
+router.post('/logout',isLoggedIn, (req, res, next) => {
+  req.session.destroy(err => {
+    if (err) next(err);
+    res.redirect('/private/auth/login');
+  });
 });
 
 module.exports = router;
